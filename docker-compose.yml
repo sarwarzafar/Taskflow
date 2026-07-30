@@ -1,0 +1,59 @@
+# Four services: redis (broker + result backend), web (FastAPI), worker
+# (Celery, scalable), and flower (monitoring dashboard).
+#
+# Run it:            docker compose up --build
+# Scale workers:      docker compose up --build --scale worker=3
+# Watch it:           http://localhost:8000/docs  (API)
+#                      http://localhost:5555        (Flower)
+
+services:
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    # No ports published to the host on purpose — only services on this
+    # compose network need to reach Redis, so it isn't exposed externally.
+
+  web:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      # Shared with the worker service so files written by a background
+      # task (processed images, PDFs, logs) are visible to the API
+      # container, and to you on the host for inspection.
+      - ./storage:/code/app/storage
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: .
+    # No fixed hostname (-n flag) here — when you scale this service,
+    # each replica gets a unique container hostname automatically, which
+    # Celery uses as its worker name. A fixed name would collide.
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./storage:/code/app/storage
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  flower:
+    build: .
+    command: celery -A app.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
