@@ -105,6 +105,3 @@ taskflow/
 ├── requirements.txt
 └── .env.example
 ```
-- One real bug was found and fixed during testing: `fpdf2`'s `multi_cell()` doesn't reset the cursor position afterward the way `cell()` does, which broke report generation on any report with more than one row. Fixed by passing `new_x`/`new_y` explicitly.
-
-Docker itself wasn't available in the environment this was built in, so the Dockerfile and compose file couldn't be executed directly — but the exact runtime configuration (working directory, environment variable overrides, relative storage paths) was replicated and verified outside Docker before being written into these files.
