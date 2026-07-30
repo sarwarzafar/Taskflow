@@ -105,13 +105,6 @@ taskflow/
 ├── requirements.txt
 └── .env.example
 ```
-
-## Notes on what was actually tested
-
-This isn't just written to look right — it was run:
-- The full API → Redis → worker → result loop was executed end-to-end for all three task types.
-- A genuine transient failure and automatic retry was captured live in the worker logs for `send_email_batch`.
-- Two independent worker processes were run simultaneously against the same queue, and task logs confirm jobs were split across both rather than one worker doing all the work.
 - One real bug was found and fixed during testing: `fpdf2`'s `multi_cell()` doesn't reset the cursor position afterward the way `cell()` does, which broke report generation on any report with more than one row. Fixed by passing `new_x`/`new_y` explicitly.
 
 Docker itself wasn't available in the environment this was built in, so the Dockerfile and compose file couldn't be executed directly — but the exact runtime configuration (working directory, environment variable overrides, relative storage paths) was replicated and verified outside Docker before being written into these files.
